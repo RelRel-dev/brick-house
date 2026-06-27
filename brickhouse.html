@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brick House – Habit Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brick: #8B3A3A;
+      --brick-dark: #6B2828;
+      --brick-light: #A85050;
+      --mortar: #E8E0D0;
+      --green: #4A7C59;
+      --green-dark: #3B6D11;
+      --green-pale: #EAF3DE;
+      --eggshell: #F5F1E8;
+      --eggshell-dark: #EDE7D9;
+      --text-main: #2C2416;
+      --text-muted: #7A6E5E;
+    }
+
+    body {
+      background: var(--eggshell);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    .app {
+      background: var(--eggshell);
+      width: 100%;
+      max-width: 600px;
+      border-radius: 16px;
+      border: 1px solid rgba(139,58,58,0.15);
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+
+    /* NAV */
+    .nav {
+      background: var(--brick);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      color: var(--mortar); font-size: 18px; font-weight: 500;
+    }
+    .nav-tabs { display: flex; gap: 4px; }
+    .nav-tab {
+      background: transparent; border: none;
+      color: rgba(232,224,208,0.65); padding: 6px 14px; border-radius: 8px;
+      font-size: 13px; cursor: pointer; transition: all 0.15s;
+    }
+    .nav-tab.active, .nav-tab:hover {
+      background: rgba(255,255,255,0.15); color: var(--mortar);
+    }
+    .streak-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(196,135,26,0.25); border: 1px solid rgba(196,135,26,0.4);
+      color: #F5D08A; padding: 5px 12px; border-radius: 20px;
+      font-size: 13px; font-weight: 500;
+    }
+
+    /* VIEWS */
+    .view { display: none; padding: 20px; }
+    .view.active { display: block; }
+
+    /* WEEK HEADER */
+    .week-header {
+      background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px;
+      border: 0.5px solid rgba(139,58,58,0.12);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .week-label { font-size: 13px; color: var(--text-muted); margin-bottom: 2px; }
+    .week-progress-text { font-size: 22px; font-weight: 500; color: var(--text-main); }
+    .quota-pill {
+      background: var(--green-pale); color: var(--green);
+      padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .quota-pill.success { background: #EAF3DE; color: #3B6D11; }
+    .quota-pill.warning { background: #FAEEDA; color: #854F0B; }
+
+    /* BRICK VIZ */
+    .brick-viz {
+      background: white; border-radius: 12px; padding: 20px;
+      border: 0.5px solid rgba(139,58,58,0.12); margin-bottom: 16px;
+    }
+    .viz-label { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+    .brick-grid {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      min-height: 60px; align-items: flex-end;
+    }
+    .brick-slot { width: 36px; height: 18px; border-radius: 3px; }
+    .brick-slot.earned {
+      background: var(--brick);
+      box-shadow: inset 0 -2px 0 var(--brick-dark), inset 0 1px 0 var(--brick-light);
+      animation: brickIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+    .brick-slot.ghost {
+      background: var(--eggshell-dark);
+      border: 1px dashed rgba(139,58,58,0.2);
+    }
+    @keyframes brickIn {
+      from { transform: translateY(-10px) scale(0.85); opacity: 0; }
+      to   { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .progress-bar-wrap {
+      margin-top: 14px; height: 6px; background: var(--eggshell-dark);
+      border-radius: 3px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; background: var(--green); border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+    .progress-labels {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--text-muted); margin-top: 5px;
+    }
+
+    /* HABITS */
+    .section-label {
+      font-size: 12px; font-weight: 500; color: var(--text-muted);
+      letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px;
+    }
+    .habit-card {
+      background: white; border-radius: 12px;
+      border: 0.5px solid rgba(139,58,58,0.1);
+      margin-bottom: 8px; padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+      transition: border-color 0.15s;
+    }
+    .habit-card:hover { border-color: rgba(139,58,58,0.25); }
+    .check-dot {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid rgba(139,58,58,0.25);
+      cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: white;
+    }
+    .check-dot.checked { background: var(--green); border-color: var(--green); }
+    .check-dot.checked::after {
+      content: ''; display: block; width: 6px; height: 10px;
+      border: 2px solid white; border-top: none; border-left: none;
+      transform: rotate(45deg) translate(-1px,-1px);
+    }
+    .check-dot:hover:not(.checked) { border-color: var(--green); background: var(--green-pale); }
+    .habit-info { flex: 1; }
+    .habit-name { font-size: 15px; color: var(--text-main); }
+    .habit-freq { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .mini-bricks { display: flex; gap: 3px; }
+    .mini-brick { width: 10px; height: 6px; border-radius: 1px; background: var(--eggshell-dark); }
+    .mini-brick.filled { background: var(--brick); }
+    .del-btn {
+      background: none; border: none; cursor: pointer;
+      color: rgba(139,58,58,0.3); padding: 4px; border-radius: 4px;
+      font-size: 16px; line-height: 1; transition: color 0.15s;
+    }
+    .del-btn:hover { color: var(--brick); }
+
+    /* ADD HABIT BOTTOM BUTTON */
+    .add-habit-btn {
+      width: 100%; margin-top: 8px; padding: 14px 16px;
+      background: var(--green); color: white; border: none;
+      border-radius: 12px; font-size: 15px; font-weight: 500;
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center; gap: 8px; transition: background 0.15s;
+    }
+    .add-habit-btn:hover { background: var(--green-dark); }
+
+    /* ADD HABIT FORM */
+    .add-form {
+      display: none; background: white; border-radius: 12px;
+      border: 0.5px solid rgba(139,58,58,0.2); padding: 18px; margin-bottom: 14px;
+    }
+    .add-form.open { display: block; }
+    .form-title { font-size: 15px; font-weight: 500; color: var(--text-main); margin-bottom: 14px; }
+    .form-group { margin-bottom: 12px; }
+    .form-label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 5px; }
+    .form-input {
+      width: 100%; padding: 9px 12px; border-radius: 8px;
+      border: 0.5px solid rgba(0,0,0,0.15); font-size: 14px;
+      color: var(--text-main); background: var(--eggshell);
+      outline: none; transition: border-color 0.15s;
+    }
+    .form-input:focus { border-color: var(--green); }
+    .freq-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .freq-chip {
+      padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer;
+      border: 1px solid rgba(139,58,58,0.2); color: var(--text-muted);
+      background: white; transition: all 0.15s; user-select: none;
+    }
+    .freq-chip.selected { background: var(--brick); color: white; border-color: var(--brick); }
+    .form-actions { display: flex; gap: 8px; margin-top: 14px; }
+    .btn-save {
+      background: var(--brick); color: white; border: none;
+      padding: 10px 24px; border-radius: 8px; font-size: 14px;
+      font-weight: 500; cursor: pointer; transition: background 0.15s;
+    }
+    .btn-save:hover { background: var(--brick-dark); }
+    .btn-cancel {
+      background: transparent; color: var(--text-muted);
+      border: 0.5px solid rgba(139,58,58,0.2);
+      padding: 10px 16px; border-radius: 8px; font-size: 14px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-cancel:hover { background: var(--eggshell-dark); }
+
+    /* HOUSE VIEW */
+    .house-svg-wrap { max-width: 340px; margin: 0 auto 12px; }
+    .house-caption { font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 18px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-card {
+      background: white; border-radius: 12px; padding: 16px;
+      border: 0.5px solid rgba(139,58,58,0.12);
+    }
+    .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+    .stat-val { font-size: 28px; font-weight: 500; color: var(--text-main); }
+    .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .complete-banner {
+      background: var(--green); color: white; border-radius: 12px;
+      padding: 18px 20px; text-align: center; margin-bottom: 14px;
+    }
+    .complete-banner h3 { font-size: 17px; font-weight: 500; margin-bottom: 4px; }
+    .complete-banner p { font-size: 13px; opacity: 0.85; }
+
+    /* STREAKS VIEW */
+    .streak-hero {
+      background: var(--brick); border-radius: 12px; padding: 24px 20px;
+      text-align: center; margin-bottom: 16px; color: var(--mortar);
+    }
+    .streak-num { font-size: 56px; font-weight: 500; line-height: 1; }
+    .streak-sub { font-size: 14px; opacity: 0.75; margin-top: 6px; }
+    .streak-icons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+    .streak-icon {
+      width: 42px; height: 42px; border-radius: 8px;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .history-list {
+      background: white; border-radius: 12px;
+      border: 0.5px solid rgba(139,58,58,0.12); overflow: hidden;
+    }
+    .history-row {
+      display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+      border-bottom: 0.5px solid rgba(139,58,58,0.07);
+    }
+    .history-row:last-child { border-bottom: none; }
+    .history-wk { font-size: 13px; color: var(--text-muted); flex: 1; }
+    .history-br { font-size: 13px; color: var(--text-main); }
+    .badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; }
+    .badge.ok { background: var(--green-pale); color: var(--green); }
+    .badge.no { background: #FAEEDA; color: #854F0B; }
+
+    /* EMPTY STATES */
+    .empty { text-align: center; padding: 36px 20px; }
+    .empty-ico { font-size: 38px; margin-bottom: 10px; }
+    .empty-title { font-size: 15px; color: var(--text-main); margin-bottom: 5px; }
+    .empty-sub { font-size: 13px; color: var(--text-muted); }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--brick); color: white;
+      padding: 10px 22px; border-radius: 24px; font-size: 14px;
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+      white-space: nowrap; z-index: 999; pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* RESPONSIVE */
+    @media (max-width: 480px) {
+      .nav { flex-direction: column; align-items: flex-start; }
+      .week-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .two-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <nav class="nav">
+    <div class="nav-brand">🏠 Brick House</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showView('today')">Today</button>
+      <button class="nav-tab" onclick="showView('house')">This Week</button>
+      <button class="nav-tab" onclick="showView('streaks')">Streaks</button>
+    </div>
+    <div class="streak-badge">🔥 <span id="streak-count">0</span> week streak</div>
+  </nav>
+
+  <!-- ── TODAY VIEW ── -->
+  <div class="view active" id="view-today">
+    <div class="week-header">
+      <div>
+        <div class="week-label" id="week-range">Loading…</div>
+        <div class="week-progress-text">
+          <span id="earned-count">0</span> of <span id="total-count">0</span> bricks earned
+        </div>
+      </div>
+      <div class="quota-pill" id="quota-pill">Add habits</div>
+    </div>
+
+    <div class="brick-viz">
+      <div class="viz-label">Your brick pile this week</div>
+      <div class="brick-grid" id="brick-grid"></div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="prog-fill" style="width:0%"></div>
+      </div>
+      <div class="progress-labels">
+        <span>0</span>
+        <span style="color:var(--green)">▲ 85% goal</span>
+        <span id="max-label">0 max</span>
+      </div>
+    </div>
+
+    <div class="add-form" id="add-form">
+      <div class="form-title">New habit</div>
+      <div class="form-group">
+        <label class="form-label">What's the habit?</label>
+        <input class="form-input" id="habit-input" placeholder="e.g. Morning walk, Read 20 pages…" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">How often this week?</label>
+        <div class="freq-chips">
+          <div class="freq-chip" data-freq="1" onclick="pickFreq(this)">Once</div>
+          <div class="freq-chip" data-freq="2" onclick="pickFreq(this)">Twice</div>
+          <div class="freq-chip" data-freq="3" onclick="pickFreq(this)">3× a week</div>
+          <div class="freq-chip" data-freq="5" onclick="pickFreq(this)">Weekdays</div>
+          <div class="freq-chip" data-freq="7" onclick="pickFreq(this)">Every day</div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-save" onclick="addHabit()">Add habit</button>
+        <button class="btn-cancel" onclick="closeForm()">Cancel</button>
+      </div>
+    </div>
+
+    <div class="section-label">Your habits</div>
+    <div id="habits-list"></div>
+    <button class="add-habit-btn" onclick="openForm()">+ Add a habit</button>
+  </div>
+
+  <!-- ── THIS WEEK / HOUSE VIEW ── -->
+  <div class="view" id="view-house">
+    <div id="complete-banner" style="display:none" class="complete-banner"></div>
+    <div class="house-svg-wrap">
+      <svg id="house-svg" viewBox="0 0 340 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;"></svg>
+    </div>
+    <div class="house-caption" id="house-caption">Keep stacking — your house is taking shape.</div>
+    <div class="two-col">
+      <div class="stat-card">
+        <div class="stat-label">Bricks earned</div>
+        <div class="stat-val" id="hs-earned">0</div>
+        <div class="stat-sub">this week</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Brick quota</div>
+        <div class="stat-val" id="hs-quota">0</div>
+        <div class="stat-sub" id="hs-sub">needed to build</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STREAKS VIEW ── -->
+  <div class="view" id="view-streaks">
+    <div class="streak-hero">
+      <div class="streak-num" id="streak-big">0</div>
+      <div class="streak-sub">consecutive weeks built</div>
+      <div class="streak-icons" id="streak-icons"></div>
+    </div>
+    <div class="history-list" id="history-list">
+      <div class="empty">
+        <div class="empty-ico">📋</div>
+        <div class="empty-title">No history yet</div>
+        <div class="empty-sub">Complete your first week to see your record.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  /* ═══════════════════════════════════════
+     BRICK HOUSE — Habit Tracker
+     Storage: localStorage (key: brickhouse_v1)
+     ═══════════════════════════════════════ */
+
+  const STORAGE_KEY = 'brickhouse_v1';
+  const FREQ_LABELS = { 1:'Once', 2:'Twice', 3:'3× a week', 5:'Weekdays', 7:'Every day' };
+
+  let state = { habits: [], logs: {}, history: [], streak: 0 };
+  let selectedFreq = null;
+
+  /* ── Persistence ── */
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) state = { ...state, ...JSON.parse(raw) };
+    } catch(e) { console.warn('Brick House: could not load state', e); }
+  }
+  function saveState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch(e) { console.warn('Brick House: could not save state', e); }
+  }
+
+  /* ── Date helpers ── */
+  function weekKey(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.setDate(diff)).toISOString().slice(0, 10);
+  }
+  function weekRange(k) {
+    const mon = new Date(k);
+    const sun = new Date(mon);
+    sun.setDate(sun.getDate() + 6);
+    const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${fmt(mon)} – ${fmt(sun)}`;
+  }
+  function todayStr()  { return new Date().toISOString().slice(0, 10); }
+  function curWeek()   { return weekKey(new Date()); }
+
+  /* ── Computed values ── */
+  function totalBricks() { return state.habits.reduce((a, h) => a + h.freq, 0); }
+  function habitLogs(id) { return ((state.logs[curWeek()] || {})[id]) || []; }
+  function earnedThisWeek() {
+    const wk = curWeek();
+    return state.habits.reduce((sum, h) => {
+      return sum + Math.min(((state.logs[wk] || {})[h.id] || []).length, h.freq);
+    }, 0);
+  }
+
+  /* ── Form ── */
+  function openForm() {
+    document.getElementById('add-form').classList.add('open');
+    document.getElementById('habit-input').focus();
+  }
+  function closeForm() {
+    document.getElementById('add-form').classList.remove('open');
+    document.getElementById('habit-input').value = '';
+    selectedFreq = null;
+    document.querySelectorAll('.freq-chip').forEach(c => c.classList.remove('selected'));
+  }
+  function pickFreq(el) {
+    document.querySelectorAll('.freq-chip').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedFreq = parseInt(el.dataset.freq, 10);
+  }
+  function addHabit() {
+    const name = document.getElementById('habit-input').value.trim();
+    if (!name)         { showToast('Give your habit a name ✏️'); return; }
+    if (!selectedFreq) { showToast('Pick a frequency 📅'); return; }
+    state.habits.push({ id: 'h' + Date.now(), name, freq: selectedFreq });
+    saveState();
+    closeForm();
+    render();
+    showToast('Habit added! Start earning bricks 🧱');
+  }
+  function deleteHabit(id) {
+    state.habits = state.habits.filter(h => h.id !== id);
+    saveState();
+    render();
+  }
+
+  /* ── Logging ── */
+  function logHabit(id) {
+    const wk    = curWeek();
+    const today = todayStr();
+    if (!state.logs[wk])     state.logs[wk] = {};
+    if (!state.logs[wk][id]) state.logs[wk][id] = [];
+
+    const logs  = state.logs[wk][id];
+    const habit = state.habits.find(h => h.id === id);
+
+    if (logs.includes(today)) {
+      // toggle off
+      state.logs[wk][id] = logs.filter(d => d !== today);
+      saveState(); render(); return;
+    }
+    if (logs.length >= habit.freq) {
+      showToast(`All ${habit.freq} bricks earned for this habit! 🎉`); return;
+    }
+    state.logs[wk][id].push(today);
+    saveState(); render();
+
+    const e = earnedThisWeek(), t = totalBricks(), pct = t > 0 ? e / t : 0;
+    if (pct >= 0.85)   showToast('85% hit — house can be built! 🏠');
+    else if (e === 1)  showToast('First brick! Keep going 🧱');
+    else showToast(
+      pct < 0.25 ? 'Every brick counts 💪' :
+      pct < 0.50 ? 'Walls rising! 🏗️'      :
+      pct < 0.75 ? 'Past halfway 🧱'        :
+                   'Almost there! 🏠'
+    );
+  }
+
+  /* ── Week close (call at end of week to log history & update streak) ── */
+  function closeWeek() {
+    const wk = curWeek();
+    if (state.history.find(w => w.wk === wk)) return; // already logged
+    const e = earnedThisWeek(), t = totalBricks(), pct = t > 0 ? e / t : 0;
+    state.history.push({ wk, e, t, pct });
+    state.streak = pct >= 0.85 ? (state.streak || 0) + 1 : 0;
+    saveState(); render();
+    showToast(pct >= 0.85 ? '🏠 Week complete! House built!' : '💪 New week, fresh start!');
+  }
+
+  /* ── Toast ── */
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  /* ── Navigation ── */
+  function showView(v) {
+    document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('view-' + v).classList.add('active');
+    const idx = ['today', 'house', 'streaks'].indexOf(v);
+    if (idx >= 0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+    if (v === 'house')   renderHouse();
+    if (v === 'streaks') renderStreaks();
+  }
+
+  /* ── Main render ── */
+  function render() {
+    const earned = earnedThisWeek();
+    const total  = totalBricks();
+
+    document.getElementById('week-range').textContent    = weekRange(curWeek());
+    document.getElementById('earned-count').textContent  = earned;
+    document.getElementById('total-count').textContent   = total;
+    document.getElementById('streak-count').textContent  = state.streak;
+
+    // Quota pill
+    const pill = document.getElementById('quota-pill');
+    if (total === 0) {
+      pill.textContent = 'Add habits';
+      pill.className   = 'quota-pill';
+    } else {
+      const pct  = earned / total;
+      const need = Math.ceil(total * 0.85);
+      if (pct >= 0.85) {
+        pill.textContent = '🏠 House built!';
+        pill.className   = 'quota-pill success';
+      } else {
+        const rem = need - earned;
+        pill.textContent = `${rem} brick${rem !== 1 ? 's' : ''} to goal`;
+        pill.className   = pct >= 0.5 ? 'quota-pill warning' : 'quota-pill';
+      }
+    }
+
+    // Brick grid
+    const grid    = document.getElementById('brick-grid');
+    grid.innerHTML = '';
+    const display  = Math.max(total, 1);
+    for (let i = 0; i < display; i++) {
+      const b = document.createElement('div');
+      b.className = 'brick-slot ' + (i < earned ? 'earned' : 'ghost');
+      if (i < earned) b.style.animationDelay = (i * 0.04) + 's';
+      grid.appendChild(b);
+    }
+    document.getElementById('prog-fill').style.width =
+      (total > 0 ? Math.min(earned / total * 100, 100) : 0) + '%';
+    document.getElementById('max-label').textContent = total + ' max';
+
+    // Habits list
+    const list = document.getElementById('habits-list');
+    if (state.habits.length === 0) {
+      list.innerHTML = `
+        <div class="empty">
+          <div class="empty-ico">🧱</div>
+          <div class="empty-title">No habits yet</div>
+          <div class="empty-sub">Add your first habit to start earning bricks.</div>
+        </div>`;
+      return;
+    }
+    list.innerHTML = '';
+    const today = todayStr();
+    state.habits.forEach(h => {
+      const logs      = habitLogs(h.id);
+      const weekEarned = Math.min(logs.length, h.freq);
+      const checked    = logs.includes(today);
+      const card       = document.createElement('div');
+      card.className   = 'habit-card';
+      let mini = '';
+      for (let i = 0; i < h.freq; i++)
+        mini += `<div class="mini-brick${i < weekEarned ? ' filled' : ''}"></div>`;
+      card.innerHTML = `
+        <div class="check-dot${checked ? ' checked' : ''}" onclick="logHabit('${h.id}')" title="${checked ? 'Unmark' : 'Mark complete'}"></div>
+        <div class="habit-info">
+          <div class="habit-name">${h.name}</div>
+          <div class="habit-freq">${FREQ_LABELS[h.freq] || h.freq + '× a week'} · ${weekEarned}/${h.freq} bricks</div>
+        </div>
+        <div class="mini-bricks">${mini}</div>
+        <button class="del-btn" onclick="deleteHabit('${h.id}')" aria-label="Remove habit">✕</button>`;
+      list.appendChild(card);
+    });
+  }
+
+  /* ── House SVG ── */
+  function drawHouse(pct) {
+    const svg  = document.getElementById('house-svg');
+    const W = 340, hW = 200, hH = 120, hx = (W - hW) / 2, hy = 120;
+    const px = W / 2, py = 30;
+    const fill = Math.min(pct / 0.85, 1);
+    svg.innerHTML = '';
+    const ns = 'http://www.w3.org/2000/svg';
+    const el = (tag, attrs) => {
+      const e = document.createElementNS(ns, tag);
+      Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+      return e;
+    };
+
+    // Ground
+    svg.appendChild(el('rect', { x:0, y:hy+hH, width:W, height:50, fill:'#6B9E7833' }));
+
+    // Ghost silhouette
+    svg.appendChild(el('polygon', { points:`${px},${py} ${hx},${hy} ${hx+hW},${hy}`, fill:'rgba(139,58,58,0.06)' }));
+    svg.appendChild(el('rect',    { x:hx, y:hy, width:hW, height:hH, fill:'rgba(139,58,58,0.06)' }));
+
+    // Brick rows
+    const bH = 14, bW = 38, gap = 2;
+    const rows       = Math.floor(hH / (bH + gap));
+    const filledRows = Math.floor(fill * rows);
+    for (let r = 0; r < rows; r++) {
+      const ry    = hy + hH - (r + 1) * (bH + gap);
+      const off   = r % 2 === 0 ? 0 : bW / 2;
+      const show  = r < filledRows;
+      let bx = hx - off;
+      while (bx < hx + hW) {
+        const x  = Math.max(bx, hx);
+        const x2 = Math.min(bx + bW, hx + hW);
+        if (x2 - x > 4) {
+          if (show)
+            svg.appendChild(el('rect', { x, y:ry, width:x2-x-gap, height:3, rx:2, fill:'#A85050' }));
+          svg.appendChild(el('rect', { x, y:ry, width:x2-x-gap, height:bH, rx:2,
+            fill: show ? '#8B3A3A' : 'rgba(139,58,58,0.08)' }));
+        }
+        bx += bW + gap;
+      }
+    }
+
+    // Roof
+    svg.appendChild(el('polygon', {
+      points: `${px},${py} ${hx-10},${hy} ${hx+hW+10},${hy}`,
+      fill: fill >= 1 ? '#8B3A3A' : 'rgba(139,58,58,0.1)',
+      stroke: '#6B2828', 'stroke-width': 1.5
+    }));
+
+    // Windows (appear at 40%)
+    if (fill >= 0.4) {
+      [[hx+20, hy+25], [hx+hW-52, hy+25]].forEach(([wx, wy]) => {
+        svg.appendChild(el('rect', { x:wx, y:wy, width:32, height:28, rx:2, fill:'#C8E6F5', stroke:'#6B2828', 'stroke-width':1 }));
+        svg.appendChild(el('line', { x1:wx+16, y1:wy, x2:wx+16, y2:wy+28, stroke:'#6B2828', 'stroke-width':1 }));
+        svg.appendChild(el('line', { x1:wx, y1:wy+14, x2:wx+32, y2:wy+14, stroke:'#6B2828', 'stroke-width':1 }));
+      });
+    }
+
+    // Door (appears at 50%)
+    if (fill >= 0.5) {
+      const dw = 28, dh = 38, dx = W/2 - dw/2, dy = hy + hH - dh;
+      svg.appendChild(el('rect', { x:dx, y:dy, width:dw, height:dh, rx:3, fill:'#4A7C59' }));
+    }
+
+    // Chimney (full house)
+    if (fill >= 1)
+      svg.appendChild(el('rect', { x:W/2+40, y:18, width:18, height:hy-10, fill:'#6B2828' }));
+
+    // % label
+    const lbl = document.createElementNS(ns, 'text');
+    lbl.setAttribute('x', W - 10);
+    lbl.setAttribute('y', hy + hH - 6);
+    lbl.setAttribute('text-anchor', 'end');
+    lbl.setAttribute('font-size', '12');
+    lbl.setAttribute('fill', '#7A6E5E');
+    lbl.textContent = Math.round(fill * 100) + '% complete';
+    svg.appendChild(lbl);
+  }
+
+  function renderHouse() {
+    const earned = earnedThisWeek(), total = totalBricks();
+    const pct    = total > 0 ? earned / total : 0;
+    const need   = total > 0 ? Math.ceil(total * 0.85) : 0;
+    drawHouse(pct);
+    document.getElementById('hs-earned').textContent = earned;
+    document.getElementById('hs-quota').textContent  = need;
+    const banner = document.getElementById('complete-banner');
+    if (pct >= 0.85) {
+      banner.style.display = 'block';
+      banner.innerHTML = `<h3>🏠 Your house stands!</h3><p>You hit ${Math.round(pct*100)}% of your brick quota this week.</p>`;
+      document.getElementById('house-caption').textContent = 'Full house achieved — you showed up.';
+      document.getElementById('hs-sub').textContent = 'goal met ✓';
+    } else {
+      banner.style.display = 'none';
+      const rem = need - earned;
+      document.getElementById('house-caption').textContent =
+        rem > 0 ? `${rem} more brick${rem !== 1 ? 's' : ''} to complete your house.`
+                : 'Add habits to start building.';
+      document.getElementById('hs-sub').textContent = 'to build your house';
+    }
+  }
+
+  function renderStreaks() {
+    document.getElementById('streak-big').textContent   = state.streak;
+    document.getElementById('streak-count').textContent = state.streak;
+    const icons = document.getElementById('streak-icons');
+    icons.innerHTML = '';
+    for (let i = 0; i < Math.min(state.streak, 12); i++) {
+      const d = document.createElement('div');
+      d.className   = 'streak-icon';
+      d.textContent = '🏠';
+      icons.appendChild(d);
+    }
+    const hist = document.getElementById('history-list');
+    if (!state.history || state.history.length === 0) {
+      hist.innerHTML = `
+        <div class="empty">
+          <div class="empty-ico">📋</div>
+          <div class="empty-title">No history yet</div>
+          <div class="empty-sub">Complete your first week to see your record.</div>
+        </div>`;
+      return;
+    }
+    hist.innerHTML = '';
+    [...state.history].reverse().forEach(w => {
+      const row = document.createElement('div');
+      row.className = 'history-row';
+      const ok = w.pct >= 0.85;
+      row.innerHTML = `
+        <div class="history-wk">${weekRange(w.wk)}</div>
+        <div class="history-br">${w.e}/${w.t} bricks</div>
+        <div class="badge ${ok ? 'ok' : 'no'}">${ok ? '🏠 Built' : 'Try again'}</div>`;
+      hist.appendChild(row);
+    });
+  }
+
+  /* ── Keyboard shortcut: Enter to submit form ── */
+  document.getElementById('habit-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addHabit();
+  });
+
+  /* ── Init ── */
+  loadState();
+  render();
+</script>
+</body>
+</html>
